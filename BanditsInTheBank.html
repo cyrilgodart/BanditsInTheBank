@@ -1,0 +1,1367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Bandits in the bank</title>
+<meta name="author" content="Cyril Godart"/>
+<style type="text/css">
+.underline { text-decoration: underline; }
+</style>
+<link rel="stylesheet" href="./reveal.js/css/reveal.css"/>
+
+<link rel="stylesheet" href="./reveal.js/css/theme/black.css" id="theme"/>
+<link rel="stylesheet" href="./reveal.js/lib/css/zenburn.css"/>
+
+<!-- If the query includes 'print-pdf', include the PDF print sheet -->
+<script>
+    if( window.location.search.match( /print-pdf/gi ) ) {
+        var link = document.createElement( 'link' );
+        link.rel = 'stylesheet';
+        link.type = 'text/css';
+        link.href = './reveal.js/css/print/pdf.css';
+        document.getElementsByTagName( 'head' )[0].appendChild( link );
+    }
+</script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+<section id="sec-title-slide">
+<h1 class="title">Bandits in the bank</h1><h2 class="author">Cyril Godart</h2><p class="date">Created: 2021-02-02 Tue 16:03</p>
+</section>
+<section>
+<section id="slide-org70b07b3">
+<h2 id="org70b07b3">Quick introduction to multi-arms bandits</h2>
+<div class="outline-text-2" id="text-org70b07b3">
+</div>
+</section>
+<section id="slide-org7ba53da">
+<h3 id="org7ba53da">A class of algorithms</h3>
+<p>
+solves:
+</p>
+<ul>
+<li class="fragment appear">allocation</li>
+<li class="fragment appear">of <b>limited</b> ressources</li>
+<li class="fragment appear">to competing options</li>
+<li class="fragment appear">under limited knowledge</li>
+<li class="fragment appear">classic <b>reinforcement learning</b> problem</li>
+<li class="fragment appear">illustrates trade-off between:
+<ul>
+<li class="fragment highlight-blue">exploration</li>
+<li class="fragment highlight-blue">exploitation</li>
+
+</ul></li>
+
+</ul>
+</section>
+<section id="slide-org7e2b984">
+<h3 id="org7e2b984">What's in a name</h3>
+<p>
+Has been illustrated with a casino setup 
+</p>
+<ul>
+<li class="fragment appear">a player</li>
+<li class="fragment appear">with a fixed sum of money</li>
+<li class="fragment appear">chooses which slot machines (one-armed bandits)
+to play</li>
+
+</ul>
+</section>
+<section id="slide-org6a1a592">
+<h3 id="org6a1a592">In the times of Covid</h3>
+<ul>
+<li class="fragment appear">Thomson's  seminal paper</li>
+<li class="fragment appear">1933</li>
+<li class="fragment appear">Yale Department of pathology</li>
+<li class="fragment appear">general consideration on:
+<ul>
+<li>research planning</li>
+<li>treatment of patients.</li>
+
+</ul></li>
+
+</ul>
+</section>
+<section id="slide-orgd03216d">
+<h3 id="orgd03216d">is it used ?</h3>
+<ul>
+<li>YES !</li>
+<li>for:
+<ul>
+<li class="fragment appear">pricing for retailers
+<ul>
+<li>volume vs revenue per item</li>
+
+</ul></li>
+<li class="fragment appear">recomender systems and ad-placing
+<ul>
+<li>exploit known taste from one user</li>
+<li>introduce new products to consume</li>
+
+</ul></li>
+<li class="fragment appear">routing in telecommunication network</li>
+<li class="fragment appear">Machine Learning:
+preferred route to avoid <b>supervised learning</b></li>
+
+</ul></li>
+
+</ul>
+</section>
+<section id="slide-orgff30776">
+<h4 id="orgff30776">by whom ?</h4>
+<ul>
+<li class="fragment appear">Amazon</li>
+<li class="fragment appear">Google</li>
+<li class="fragment appear">Microsoft</li>
+<li class="fragment appear">Apple</li>
+
+</ul>
+</section>
+</section>
+<section>
+<section id="slide-org70fd59d">
+<h2 id="org70fd59d">The bid-offer spread: a natural application ?</h2>
+<div class="outline-text-2" id="text-org70fd59d">
+</div>
+</section>
+<section id="slide-orgf6213bf">
+<h3 id="orgf6213bf">BNPP approach for FX Swaps</h3>
+<ul>
+<li>calibration of a <i>S-Curve</i>:
+<ul>
+<li><b>prior</b> probability of trading
+given the half-spread width</li>
+
+</ul></li>
+<li>the algorithm sets the bid offer 
+spread so as to maximise the 
+expected P&amp;L</li>
+
+</ul>
+</section>
+<section id="slide-orgd2f9e2f">
+<h3 id="orgd2f9e2f">Issues with this approach</h3>
+<ul>
+<li>mostly a static approach
+(a dynamic calibration has since  
+ been introduced)</li>
+<li>relatively complex parameters</li>
+
+</ul>
+</section>
+<section id="slide-org1407fe4">
+<h3 id="org1407fe4">Could bandits help ?</h3>
+<p>
+Maybe
+</p>
+<ul>
+<li class="fragment appear">the Bandit algorithm is inherently on-line</li>
+<li class="fragment appear">a lot of strategies are dynamically adaptative</li>
+<li class="fragment appear">the parametrisation is often intuitive</li>
+<li class="fragment appear">allows natural granularity</li>
+
+</ul>
+</section>
+</section>
+<section>
+<section id="slide-org359f999">
+<h2 id="org359f999">A minimalistic multi-agent market</h2>
+<div class="outline-text-2" id="text-org359f999">
+</div>
+</section>
+<section id="slide-org8e5cdd5">
+<h3 id="org8e5cdd5">Motivation</h3>
+<ul>
+<li>No access to engine</li>
+<li>but simulation is possible</li>
+
+</ul>
+<p>
+Model:
+</p>
+<ul>
+<li class="fragment appear">two or more agents compete</li>
+<li class="fragment appear">by submitting bids (or spreads
+assuming market-mid is unique and
+no skew)</li>
+<li class="fragment appear">bids are stochastic</li>
+
+</ul>
+</section>
+<section id="slide-orga92b551">
+<h3 id="orga92b551">Implementation: Bank Quote</h3>
+<ul>
+<li>an agent quotes stochastically (following a gaussian)</li>
+<li>possibly a time-dependent distribution.</li>
+
+</ul>
+<div class="org-src-container">
+
+<pre><code class="python" data-line-numbers="1|13|10-12|6-7">class BankQuote:
+    # a bare competitor
+    # quotes with an average spread with some fluctuations. 
+    # gaussian distribution
+    def __init__(self, 
+                 mu = lambda t: 0.2, 
+                 var = lambda t: 0.02):
+         self.mu = mu
+         self.var = var
+    def __call__(self, t=1):
+        mean = self.mu(t)
+        var = self.var(t)
+        return np.random.normal(mean, var,1)[0]
+</code></pre>
+</div>
+</section>
+<section id="slide-org16c5a95">
+<h3 id="org16c5a95">Examples of competitors</h3>
+<ol>
+<li class="fragment appear"><p>
+An almost deterministic broker-dealer 
+</p>
+<div class="org-src-container">
+
+<pre><code class="python" ># quotes wide with little variance 
+Citi = BankQuote(mu=lambda t: 0.23, 
+                 var= lambda t:0.01)
+</code></pre>
+</div></li>
+<li class="fragment appear"><p>
+An adaptative one 
+</p>
+<div class="org-src-container">
+
+<pre><code class="python" ># start wide (.2) then becomes aggressive after 500 rounds
+JPMorgan = BankQuote(mu = lambda t: 0.2 
+                         if t &lt; 500 
+                         else 0.13, 
+                         var= lambda t: 0.002)
+</code></pre>
+</div></li>
+
+</ol>
+<p class="forwardlink">
+<a href="#/slide-org5ba27ab" class="forwardlink">A simple example</a>
+</p>
+</section>
+<section id="slide-org100f927">
+<h3 id="org100f927">Implementation: Market Quote</h3>
+<p>
+We consider a perfectly efficient market where the market price
+is the best quote from competitors
+</p>
+<div class="org-src-container">
+
+<pre><code class="python" data-line-numbers="1|2|3|5-6">class MarketQuote:
+    def __init__(self, competitors=[JPMorgan, Citi]):
+        self.competitors = competitors
+    def __call__(self, t=1):
+        return np.min([competitor(t) for 
+                        competitor in self.competitors])
+</code></pre>
+</div>
+</section>
+<section id="slide-org27402ec">
+<h3 id="org27402ec">Implementation: Quoting against the market</h3>
+<ul>
+<li class="fragment appear">we issue a quote (stochastic)</li>
+<li class="fragment appear">We trade if we quote tighter than the market</li>
+<li class="fragment appear"><p>
+code
+</p>
+<div class="org-src-container">
+
+<pre><code class="python" data-line-numbers="1|3|5|7|8-11">class BNPPbid:
+    def __init__(self, variance, 
+                  competitors=[JPMorgan, Citi]):
+        self.quote_market = MarketQuote(competitors=
+                                        competitors)
+        self.variance = variance
+    def __call__(self, bid, t=1):
+        bid = max(0,np.random.normal(bid, self.variance, 1)[0])
+        bid_competition = self.quote_market(t)
+        if bid &lt; bid_competition: return bid
+        else: return 0
+</code></pre>
+</div>
+<p class="forwardlink">
+<a href="#/slide-org5ba27ab" class="forwardlink">A simple example</a>
+</p></li>
+
+</ul>
+</section>
+<section id="slide-org3f259a9">
+<h3 id="org3f259a9">What can we do with this model ?</h3>
+<ul>
+<li>simple</li>
+<li>but helpful to investigate</li>
+
+</ul>
+</section>
+<section id="slide-org4115c7c">
+<h4 id="org4115c7c">S-Curve for an (almost) deterministic market (for example)</h4>
+
+<div class="figure">
+<p><img src="./S-Curve.png" alt="S-Curve.png" /> 
+</p>
+</div>
+</section>
+<section id="slide-orgeaeed28">
+<h4 id="orgeaeed28">Corresponding expected P&amp;L</h4>
+
+<div class="figure">
+<p><img src="./pnl-expected-curve.png" alt="pnl-expected-curve.png" /> 
+</p>
+</div>
+</section>
+</section>
+<section>
+<section id="slide-orgf4965ff">
+<h2 id="orgf4965ff">Using a bandit algorithm</h2>
+<div class="outline-text-2" id="text-orgf4965ff">
+</div>
+</section>
+<section id="slide-org9ada3c2">
+<h3 id="org9ada3c2">Main idea</h3>
+<ul>
+<li class="fragment appear">discretise the normalised bid axis
+(say with 7 discrete points)</li>
+<li class="fragment appear">when we receive an RFQ, pick one of these
+bids  
+<ul>
+<li class="fragment appear">if the client trades with us, we pocket 
+the reward, which is a <b>deterministic function</b> of this bid.</li>
+<li class="fragment appear">nothing otherwise</li>
+
+</ul></li>
+<li class="fragment appear">In short, each of these bid can actually be seen a bandit
+associated to its own reward</li>
+
+</ul>
+</section>
+<section id="slide-org6745a38">
+<h3 id="org6745a38">A remark on discretisation</h3>
+<p>
+Where to put the points ?
+</p>
+<ul>
+<li class="fragment appear">if you have no idea you can discretise 
+your axis uniformly</li>
+<li class="fragment appear">but in our case we have already a very   
+good idea of where to put the points thanks
+to the S-cuve. In short, we want to discretise
+more where the S-curve changes rapidly (high grandient)
+and much less at the far left and right of the axis.</li>
+<li class="fragment appear">In a Laplace-Bayes context, the S-curve is the <b>prior</b> 
+and the bandits are going to help us to refine the 
+<b>posterior</b> distribution.</li>
+
+</ul>
+</section>
+<section id="slide-orgb14b880">
+<h3 id="orgb14b880">Performance of individual bandit algorithms</h3>
+<ul>
+<li class="fragment appear">the MAB are a <b>family</b> of algorithms
+(even in this simple case)</li>
+<li class="fragment appear">we are going to try several of them</li>
+<li class="fragment appear">in order to compare them we need 
+a way of evaluating their performance</li>
+<li class="fragment appear">this is done through the notion of&#x2026;</li>
+
+</ul>
+</section>
+<section id="slide-org7cbf953">
+<h3 id="org7cbf953">Regret</h3>
+<p>
+The regret is:
+</p>
+<ul>
+<li class="fragment appear">the cumulative difference</li>
+<li class="fragment appear">between:
+<ul>
+<li class="fragment grow">the reward <b>had you done the optimal choice</b></li>
+<li class="fragment grow">and the actual reward</li>
+<li class="fragment grow">at each step of the algorithm (each RFQ)</li>
+
+</ul></li>
+<li class="fragment appear">at best, the regret is 0</li>
+<li class="fragment appear">more often, this is a positive quantity 
+that increases with time passing by.</li>
+
+</ul>
+</section>
+<section id="slide-org2c286b7">
+<h3 id="org2c286b7">Remarks on Regret</h3>
+<ul>
+<li class="fragment appear">clearly, an abstract quantity as, in reality, 
+we <b>do not know</b> what the optimal choice is.</li>
+<li class="fragment appear">we look at the regret to compare our 
+different strategies, remember ?</li>
+
+</ul>
+</section>
+<section id="slide-org0fedb66">
+<h3 id="org0fedb66">P&amp;L deterministic function of the spread</h3>
+<ul>
+<li class="fragment appear">that's assuming: Notional = 1
+<ul>
+<li class="fragment appear">look at $/mio</li>
+<li class="fragment appear">tiering of notional</li>
+<li class="fragment appear">both</li>
+
+</ul></li>
+<li class="fragment appear">other tiering possible
+<ul>
+<li>clients</li>
+<li>pairs or pair groups</li>
+
+</ul></li>
+
+</ul>
+</section>
+</section>
+<section>
+<section id="slide-orge0cbd90">
+<h2 id="orge0cbd90">The A/B (and C/D&#x2026;) test</h2>
+<ul>
+<li class="fragment appear">the A/B test is a bandit strategy</li>
+<li class="fragment appear">whereby we explore for a certain period</li>
+<li class="fragment appear">then we exploit</li>
+
+</ul>
+</section>
+<section id="slide-org5316a75">
+<h3 id="org5316a75">close up</h3>
+<ul>
+<li class="fragment appear">once everything else is factored out
+a bandit strategy is defined by a single
+function: the one that pick the next 
+candidate.</li>
+<li class="fragment appear"><p>
+for the A/B Testing bandit, here it is:
+</p>
+<div class="org-src-container">
+
+<pre><code class="python" data-line-numbers="1|3|4-5|7-8">def strategy_next_bandit(self, time, bandit_best):
+      loguru.logger.debug('A/B/C.. testing:')
+      if time &lt;= self.time_testing:
+         # try each spread in turn  
+         self.bandit_next = time % self.nb_bandits
+      else:
+         # then pick the best
+         self.bandit_next = self.bests[self.time_testing]
+      return self.bandit_next
+</code></pre>
+</div></li>
+
+</ul>
+</section>
+<section id="slide-org437cfb3">
+<h3 id="org437cfb3">A few remarks</h3>
+<ul>
+<li class="fragment appear">a single hyper-parameter: 
+the number of rounds we spend testing</li>
+<li class="fragment appear">although a very simple strategy, in a deterministic 
+environment, it is actually the optimal strategy.</li>
+<li class="fragment appear">useful to introduce the material and results</li>
+
+</ul>
+</section>
+<section id="slide-org5ba27ab">
+<h3 id="org5ba27ab">A simple example</h3>
+<ul>
+<li class="fragment appear"><a href="#/slide-org27402ec" class="backwardlink">Implementation: Quoting against the market</a></li>
+<li class="fragment appear">and recall:
+<a href="#/slide-org16c5a95" class="backwardlink">Examples of competitors</a></li>
+<li class="fragment appear">Spreads bandit (disretisation):</li>
+<li class="fragment appear">[0.06, 0.1, 0.13, 0.17, 0.21, 0.22, 0.23]</li>
+<li class="fragment appear">Time testing: 70</li>
+<li class="fragment appear">Time total: 500</li>
+
+</ul>
+</section>
+<section id="slide-orgd14ff49">
+<h3 id="orgd14ff49">Results</h3>
+<div class="outline-text-3" id="text-orgd14ff49">
+</div>
+</section>
+<section id="slide-org6d576e4">
+<h4 id="org6d576e4">Next bandit</h4>
+
+<div class="figure">
+<p><img src="./ABTesting-nextbandit.png" alt="ABTesting-nextbandit.png" />
+</p>
+</div>
+</section>
+<section id="slide-org8c7974a">
+<h4 id="org8c7974a">Best bandit</h4>
+
+<div class="figure">
+<p><img src="./ABTestting-BestBandit.png" alt="ABTestting-BestBandit.png" />
+</p>
+</div>
+</section>
+<section id="slide-org1293b1f">
+<h4 id="org1293b1f">Best bandit in hindsight</h4>
+
+<div class="figure">
+<p><img src="./ABTestingn-BestBanditInHindsight.png" alt="ABTestingn-BestBanditInHindsight.png" />
+</p>
+</div>
+</section>
+<section id="slide-org0190b5b">
+<h4 id="org0190b5b">Regret</h4>
+
+<div class="figure">
+<p><img src="./ABTesting-regret.png" alt="ABTesting-regret.png" />
+</p>
+</div>
+</section>
+<section id="slide-orgded561e">
+<h3 id="orgded561e">Conclusion</h3>
+<ul>
+<li>the A/B testing is probably
+not an appropriate strategy 
+in the context of market-making.</li>
+<li>too sensitive to the calibration period</li>
+<li>assume a static regime</li>
+
+</ul>
+</section>
+</section>
+<section>
+<section id="slide-orgf6ea597">
+<h2 id="orgf6ea597">The Epsilon-greedy algorithm</h2>
+<p>
+In the &epsilon;-greedy 
+</p>
+<ul>
+<li class="fragment appear">we exploit</li>
+<li class="fragment appear">but dedicate ressources to exploration</li>
+<li class="fragment appear">with a probability: &epsilon; which
+does not need to be constant with time.</li>
+
+</ul>
+</section>
+<section id="slide-orgd42fb47">
+<h3 id="orgd42fb47">What's in the name</h3>
+<ul>
+<li class="fragment appear">the exploration is systematic</li>
+<li class="fragment appear">and tries any candidate with equal
+probability.</li>
+<li class="fragment appear">in that sense, the algorithm is greedy</li>
+
+</ul>
+</section>
+<section id="slide-orgc5ca4d5">
+<h3 id="orgc5ca4d5">what's in the code</h3>
+<div class="org-src-container">
+
+<pre><code class="python" data-line-numbers="1|3|4-6|7|8-9|10|11-12">class BenchworkBanditEpsilonGreedy(BenchworkBandit):
+  def strategy_next_bandit(self, time, bandit_best):
+      if time &lt; self.nb_bandits:
+        # choose the next untried bandit
+        # until they have been all tried
+        bandit_next = time
+      elif self.exploreQ(time): 
+        # explore
+        bandit_next = self.pickup_random_bandit(self.nexts[time-1])
+      else:
+        # exploit
+        bandit_next = self.bests[time-1]
+      return bandit_next
+</code></pre>
+</div>
+</section>
+<section id="slide-org7b421be">
+<h3 id="org7b421be">Epsilon-greedy strategy with constant probability</h3>
+<div class="outline-text-3" id="text-org7b421be">
+</div>
+</section>
+<section id="slide-org59fd0fd">
+<h4 id="org59fd0fd">probability of switch</h4>
+<ul>
+<li class="fragment appear"><p>
+the probability to try a random bandit
+aside from the current best one is kept constant 
+</p>
+<div class="org-src-container">
+
+<pre><code class="python" data-line-numbers="5|7|8|10-11">def __init__(self, proba_switch=lambda t: 0.1, 
+              **kwargs):
+    super().__init__(**kwargs)
+    # return \epsilon for an epsilon-greedy algo
+    self.proba_switch = proba_switch #default constant epsilon
+    #  (...)
+def exploreQ(self,time):
+      # we explore with a probability of epsilon
+      eps = self.proba_switch(time)
+      sample_uniform =np.random.uniform(0,1)
+      return sample_uniform &lt; eps
+</code></pre>
+</div></li>
+
+</ul>
+<p class="forwardlink">
+<a href="#/slide-org5d74e7e" class="forwardlink">back to the future</a>
+</p>
+</section>
+<section id="slide-orgc75a39b">
+<h4 id="orgc75a39b">A few remarks</h4>
+<ul>
+<li class="fragment appear">again, one single hyper-parameter: 
+the probability of testing</li>
+<li class="fragment appear">a simple strategy but leads to good results 
+even in stochastic settings.</li>
+
+</ul>
+</section>
+<section id="slide-org793bca3">
+<h4 id="org793bca3">Results: Next bandit</h4>
+
+<div class="figure">
+<p><img src="./epsgreedy_const_nextbandit.png" alt="epsgreedy_const_nextbandit.png" />
+</p>
+</div>
+</section>
+<section id="slide-orgc9daca1">
+<h4 id="orgc9daca1">Results: Regret</h4>
+
+<div class="figure">
+<p><img src="./epsgreedy_const_regret.png" alt="epsgreedy_const_regret.png" />
+</p>
+</div>
+</section>
+<section id="slide-orgc01a22b">
+<h4 id="orgc01a22b">Results: Switch probability</h4>
+
+<div class="figure">
+<p><img src="./epsgreedy_const_switchproba.png" alt="epsgreedy_const_switchproba.png" />
+</p>
+</div>
+</section>
+<section id="slide-orgd7843e4">
+<h3 id="orgd7843e4">Epsilon-greedy strategy with decreasing probability</h3>
+<div class="outline-text-3" id="text-orgd7843e4">
+</div>
+</section>
+<section id="slide-org5d74e7e">
+<h4 id="org5d74e7e">non-constant probability of switch</h4>
+<p class="backwardlink">
+Recall <a href="#/slide-org59fd0fd" class="backwardlink">the constant case</a> 
+</p>
+<ul>
+<li class="fragment appear">once we have gained some confidence, exploring becomes
+less necessary.</li>
+<li class="fragment appear"><p>
+the decreasing strategy is following a negative exponential 
+as a cooling or decaying process:
+</p>
+
+<p>
+\[\epsilon = e^{-t / h}\]
+</p></li>
+<li class="fragment appear">with \(h\) the half life</li>
+
+</ul>
+</section>
+<section id="slide-orge9111e2">
+<h4 id="orge9111e2">Visually</h4>
+
+<div class="figure">
+<p><img src="./epsgreedy_dec_switchproba.png" alt="epsgreedy_dec_switchproba.png" />
+</p>
+</div>
+</section>
+<section id="slide-org8dc8cd1">
+<h4 id="org8dc8cd1">Results: Next bandit</h4>
+
+<div class="figure">
+<p><img src="./epsgreedy_dec_nextbandit.png" alt="epsgreedy_dec_nextbandit.png" />
+</p>
+</div>
+</section>
+<section id="slide-org6201eaa">
+<h4 id="org6201eaa">Results: Regret</h4>
+
+<div class="figure">
+<p><img src="./epsgreedy_dec_regret.png" alt="epsgreedy_dec_regret.png" />
+</p>
+</div>
+</section>
+<section id="slide-orgee894fb">
+<h4 id="orgee894fb">Remarks</h4>
+<ul>
+<li class="fragment appear">a deceptively simple algorithm</li>
+<li class="fragment appear">hard to beat on standard scenarios</li>
+<li class="fragment appear">but suited for real market 
+conditions ? Answer on that&#x2026;</li>
+
+</ul>
+</section>
+</section>
+<section>
+<section id="slide-org86e733c">
+<h2 id="org86e733c">Upper Confidence Bound (UCB)</h2>
+<div class="outline-text-2" id="text-org86e733c">
+</div>
+</section>
+<section id="slide-orgd7f75fe">
+<h3 id="orgd7f75fe">Giving a sense of things to come</h3>
+<ul>
+<li class="fragment appear">Suppose you take over from colleagues</li>
+<li class="fragment appear"><p>
+Results so far:.
+</p>
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="org-right" />
+
+<col  class="org-right" />
+
+<col  class="org-right" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-right">Bandit</th>
+<th scope="col" class="org-right">Average reward</th>
+<th scope="col" class="org-right">Nb trials</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-right">0</td>
+<td class="org-right">50</td>
+<td class="org-right">35</td>
+</tr>
+
+<tr>
+<td class="org-right">1</td>
+<td class="org-right">100</td>
+<td class="org-right">2</td>
+</tr>
+
+<tr>
+<td class="org-right">2</td>
+<td class="org-right">103</td>
+<td class="org-right">10</td>
+</tr>
+
+<tr>
+<td class="org-right">3</td>
+<td class="org-right">108</td>
+<td class="org-right">200</td>
+</tr>
+</tbody>
+</table></li>
+<li class="fragment appear">which one would you choose next ?</li>
+
+</ul>
+</section>
+<section id="slide-orgb5f6017">
+<h3 id="orgb5f6017">Giving a sense of things to come (continued)</h3>
+<p>
+Intuition that: 
+</p>
+<ul>
+<li class="fragment appear">more <i>potential</i> in a bandit with:
+<ul>
+<li>slightly lower average but&#x2026;</li>
+<li>hardly tested</li>
+
+</ul></li>
+<li class="fragment appear">rather than a bandit: 
+<ul>
+<li>tested extensively</li>
+<li>with marginally higher reward</li>
+
+</ul></li>
+<li class="fragment appear">This is what UCB algorithm formalises</li>
+
+</ul>
+</section>
+<section id="slide-org6abd396">
+<h3 id="org6abd396">Starting with an empirical understanding</h3>
+<ul>
+<li class="fragment appear">the UCB-1 picks as next bandit the one for which: 
+\[\mathrm{pnl}_{avg}(k) + \mathrm{pnl}_{max}(k)\sqrt{\frac{2 log(t)}{N_k(t)}}\]
+is maximum</li>
+<li class="fragment appear"><p>
+where:
+</p>
+<ul>
+<li class="fragment appear">\(t\) is the number of rounds so far</li>
+<li class="fragment appear">\(N_k(t)\) is the number of time bandit \(k\) has been picked.</li>
+
+</ul>
+</section>
+<section>
+<ul>
+<li>\(\mathrm{pnl}_{avg}(k)\): the empirical aveage so far</li>
+<li class="fragment appear">\( \mathrm{pnl}_{max}(k) \): the max possible reward for bandit \(k\)
+(known in this case)</li>
+
+</ul></li>
+
+</ul>
+</section>
+<section id="slide-org88afe56">
+<h3 id="org88afe56">empirical understanding (continued)</h3>
+<p>
+Looking at each part of the criteria:
+\(pnl_{avg}(k) + pnl_{max}(k)\sqrt{\frac{2 log(t)}{N_k(t)}}\)
+</p>
+<ul>
+<li class="fragment appear">all other things being equal, the bandit with the highest P&amp;L is picked up.</li>
+<li class="fragment appear">\(N_k(t)\) at the denominator makes the criterion smaller for bandits that have 
+been picked many times and larger for the ones that have been chosen rarely.</li>
+
+</ul>
+</section>
+<section>
+
+<ul>
+<li>independently, and for all bandits, the criterion increases with time due to 
+the \(log(t)\) in the numerator. Note though that it increases in relative 
+less due to the \(log\) function.</li>
+
+</ul>
+
+<p>
+The net effect is that even a bad bandit (one with a very low P&amp;L) will end up
+being picked up eventually but less and less frequently if it does not improve
+its average P&amp;L sufficiently.
+</p>
+</section>
+<section id="slide-orge01fa2e">
+<h3 id="orge01fa2e">Refining the understanding within a gaussian context - 1</h3>
+<ul>
+<li class="fragment appear">why ? Because we are more familiar with gaussian distribution properties</li>
+<li class="fragment appear"><p>
+Suppose two bandits display the following empirical distribution:
+</p>
+
+<div class="figure">
+<p><img src="./twogaussians-1.png" alt="twogaussians-1.png" width="400px" />
+</p>
+</div></li>
+
+</ul>
+</section>
+<section id="slide-orgb43461b">
+<h3 id="orgb43461b">Refining the understanding within a gaussian context -2</h3>
+<ul>
+<li class="fragment appear">again, which one do you test next ?</li>
+<li class="fragment appear">well here, this is a bit of a philosophical dilemma.</li>
+<li class="fragment appear"><p>
+UCB takes the point of view of&#x2026;
+</p>
+<div class="org-center">
+<p>
+<b>optimism in the face of uncertainty</b>
+</p>
+</div></li>
+
+</ul>
+</section>
+<section id="slide-org9e8dcd8">
+<h3 id="org9e8dcd8">Refining the understanding within a gaussian context -3</h3>
+<ul>
+<li class="fragment appear">try blue until <b>some degree of certitude</b> that 
+its mean is lower or higher than the orange's one.</li>
+<li class="fragment appear"><b>for example</b> until:
+<ul>
+<li>the point one standard deviation above the mean
+for the blue</li>
+<li>is below the corresponding orange one</li>
+
+</ul></li>
+<li class="fragment appear">then, two outcomes are possible&#x2026;</li>
+
+</ul>
+</section>
+<section id="slide-org4fb4fd2">
+<h4 id="org4fb4fd2">Case 1</h4>
+
+<div class="figure">
+<p><img src="./twogaussians-2.png" alt="twogaussians-2.png" /> 
+</p>
+</div>
+</section>
+<section id="slide-org4111fcf">
+<h4 id="org4111fcf">Case 2</h4>
+
+<div class="figure">
+<p><img src="./twogaussians-3.png" alt="twogaussians-3.png" /> 
+</p>
+</div>
+</section>
+<section id="slide-orga233380">
+<h3 id="orga233380">Back to the real case</h3>
+<ul>
+<li class="fragment appear">in real life, prior is unknown</li>
+<li class="fragment appear">many formula available since Markov 
+on the dispersion around the real mean</li>
+<li class="fragment appear">one of them is&#x2026;</li>
+
+</ul>
+</section>
+<section id="slide-org116cbbc">
+<h3 id="org116cbbc">Höffding's formula</h3>
+<ul>
+<li>for an arbitrarily distributed but
+bounded (\(a<=X<=b\)) random variable  \(X\): 
+\[
+  \mathbb{P}\left[\mathbb{E}\left[X\right]>\overline{X_{t}}+u\right]≤e^{-\frac{2 t u^2}{b-a}}
+  \]</li>
+<li>hence, the seemingly arbitrary formula driving UCB-1</li>
+
+</ul>
+</section>
+<section id="slide-orgce5a406">
+<h3 id="orgce5a406">UCB results: next bandit</h3>
+
+<div class="figure">
+<p><img src="./UCB-nextbandit.png" alt="UCB-nextbandit.png" />
+</p>
+</div>
+</section>
+<section id="slide-org7b15d6d">
+<h3 id="org7b15d6d">UCB results: regret</h3>
+
+<div class="figure">
+<p><img src="./UCB-regret.png" alt="UCB-regret.png" />
+</p>
+</div>
+</section>
+<section id="slide-orgee949d8">
+<h3 id="orgee949d8">UCB results: criteria</h3>
+
+<div class="figure">
+<p><img src="./UCB-criteria.png" alt="UCB-criteria.png" />
+</p>
+</div>
+</section>
+<section id="slide-orged92bed">
+<h3 id="orged92bed">Conclusions</h3>
+<ul>
+<li>in the cases we looked at,  the performanc 
+of the UCB algoritm was somewhat below expaction.</li>
+<li>not making assumption on the distribution 
+seems to give too loose bounds</li>
+
+</ul>
+</section>
+</section>
+<section>
+<section id="slide-org6bfb88b">
+<h2 id="org6bfb88b">Thomson-sampling</h2>
+<div class="outline-text-2" id="text-org6bfb88b">
+</div>
+</section>
+<section id="slide-orgd6e39b2">
+<h3 id="orgd6e39b2">The P&amp;L distribution</h3>
+<p>
+In the case of RFQs, the P&amp;L distribution is know since:
+</p>
+<ul>
+<li class="fragment appear">HR ~ Bernouilli</li>
+<li class="fragment appear">P&amp;L = spread &times; HR
+(recall Notional = 1)</li>
+
+</ul>
+</section>
+<section id="slide-org3a5f02c">
+<h3 id="org3a5f02c">Thomson-Sampling</h3>
+<p>
+Thomson-sampling algorithm consists in 
+choosing the next bandit by sampling: 
+</p>
+<ul>
+<li class="fragment appear">from the posterior</li>
+<li class="fragment appear">at time t-1</li>
+
+</ul>
+</section>
+<section id="slide-org985ddcd">
+<h3 id="org985ddcd">Recall Beta distribution - 1</h3>
+<ul>
+<li class="fragment appear">The conjugate prior of a Bernouilli
+prior is a beta distribution</li>
+<li class="fragment appear">beta-distribution 
+<ul>
+<li class="fragment appear">defined on the interval [0, 1]</li>
+<li class="fragment appear">2 parameters: α and β</li>
+<li class="fragment appear">Beta(1,1) is the uniform distribution 
+over [0,1]</li>
+
+</ul></li>
+
+</ul>
+</section>
+<section id="slide-orgca94e63">
+<h3 id="orgca94e63">Recall Beta distribution - 2</h3>
+<p>
+Suppose that previously: 
+</p>
+<ul>
+<li>p RFQs traded</li>
+<li>q failed to trade</li>
+
+</ul>
+<p>
+Then 
+</p>
+<ul>
+<li class="fragment appear">\[\mathbb{P}\left[RFQ \, \mathrm{trades} | p, q\right] = Beta(p,q)\]</li>
+<li class="fragment appear">if RFQ trades again, then the posterior is updated to:
+{RFQ trades} Beta(p+1,q)</li>
+<li class="fragment appear">nice property of the \(beta\)-distribution</li>
+
+</ul>
+</section>
+<section id="slide-orgeba521b">
+<h3 id="orgeba521b">Peeking in the code</h3>
+<div class="org-src-container">
+
+<pre><code class="python" data-line-numbers="1|5|7-8|6-8|5-8|10">def strategy_next_bandit(self, time, bandit_best):
+      if time &gt;= 1:
+          # ....
+          for i in range(nb_bandits):
+              self.samples_beta[time][i] = 
+                      self.spreads_bandit[i]*\
+                      np.random.beta(self.wins[time-1][i],
+                                    self.losses[time-1][i])
+      # take the bandit with maximum reward
+      bandit_next = np.argmax(self.samples_beta[time])
+      return bandit_next
+</code></pre>
+</div>
+</section>
+<section id="slide-org08ea581">
+<h3 id="org08ea581">Thomson-Sampling: results</h3>
+<div class="outline-text-3" id="text-org08ea581">
+</div>
+</section>
+<section id="slide-org93d8e93">
+<h4 id="org93d8e93">Next bandit</h4>
+
+<div class="figure">
+<p><img src="./TS-nextbandit.png" alt="TS-nextbandit.png" />
+</p>
+</div>
+</section>
+<section id="slide-org7d0f69a">
+<h4 id="org7d0f69a">Regret</h4>
+
+<div class="figure">
+<p><img src="./TS-regret.png" alt="TS-regret.png" />
+</p>
+</div>
+</section>
+</section>
+<section>
+<section id="slide-orgd414e0e">
+<h2 id="orgd414e0e">Comparison of performance in different scenarios</h2>
+<div class="outline-text-2" id="text-orgd414e0e">
+</div>
+</section>
+<section id="slide-org55e2d68">
+<h3 id="org55e2d68">Deterministic</h3>
+<ul>
+<li class="fragment appear"><p>
+competitor quotes a constant spread
+</p>
+<div class="org-src-container">
+
+<pre><code class="python" >DB = BankQuote(mu = lambda t: 0.2, var = lambda t: 0.000001)
+</code></pre>
+</div></li>
+<li class="fragment appear"><p>
+market is just that competitor
+</p>
+<div class="org-src-container">
+
+<pre><code class="python" >bnpp_bid = BNPPbid(0.000001, competitors=[DB])
+</code></pre>
+</div></li>
+
+</ul>
+</section>
+<section id="slide-orgf963639">
+<h3 id="orgf963639">Deterministic with switch</h3>
+<ul>
+<li class="fragment appear"><p>
+competitor quotes a constant spread but 
+becomes more aggressive after 500 quotes
+</p>
+<div class="org-src-container">
+
+<pre><code class="python" >Nomura = BankQuote(mu = lambda t: 0.2 if t &lt; 500 else 0.09, var = lambda t: 0.0000001)
+</code></pre>
+</div></li>
+<li class="fragment appear">again market is just that competitor</li>
+
+</ul>
+</section>
+<section id="slide-orgc1149ff">
+<h4 id="orgc1149ff">Best bandit with hindsight</h4>
+
+<div class="figure">
+<p><img src="./besthind-switchdet.png" alt="besthind-switchdet.png" />
+</p>
+</div>
+</section>
+<section id="slide-orgfd72ffd">
+<h4 id="orgfd72ffd">Epsilon-greedy</h4>
+
+<div class="figure">
+<p><img src="./epscst-next-best-switch-det.png" alt="epscst-next-best-switch-det.png" />
+</p>
+</div>
+</section>
+<section id="slide-orgd32d9c4">
+<h4 id="orgd32d9c4">UCB-1</h4>
+
+<div class="figure">
+<p><img src="./ucb-nextbest-switchdet.png" alt="ucb-nextbest-switchdet.png" />
+</p>
+</div>
+</section>
+<section id="slide-orge3da4fe">
+<h4 id="orge3da4fe">Thomson-Sampling</h4>
+
+<div class="figure">
+<p><img src="./ts-next-best-switch-det.png" alt="ts-next-best-switch-det.png" />
+</p>
+</div>
+</section>
+<section id="slide-org1605c52">
+<h4 id="org1605c52">TS empirical distributions - before switch</h4>
+
+<div class="figure">
+<p><img src="./ts-pdf-switch-300.png" alt="ts-pdf-switch-300.png" />
+</p>
+</div>
+</section>
+<section id="slide-orgdeefbf8">
+<h4 id="orgdeefbf8">TS distributions - after switch</h4>
+
+<div class="figure">
+<p><img src="./ts-pdf-switch-600.png" alt="ts-pdf-switch-600.png" />
+</p>
+</div>
+</section>
+<section id="slide-orgb453dc4">
+<h4 id="orgb453dc4">TS distributions - towards the end</h4>
+
+<div class="figure">
+<p><img src="./ts-pdf-switch-1200.png" alt="ts-pdf-switch-1200.png" />
+</p>
+</div>
+</section>
+<section id="slide-org8faf12e">
+<h3 id="org8faf12e">Switch with noise</h3>
+<p>
+adding noise to the previous quote 
+</p>
+<div class="org-src-container">
+
+<pre><code class="python" >RBC = BankQuote(mu = lambda t: 0.2 if t &lt; 500 else 0.07, var = lambda t: 0.03)
+</code></pre>
+</div>
+</section>
+<section id="slide-org12fefc9">
+<h4 id="org12fefc9">Distribution after 2700 RFQs observed</h4>
+
+<div class="figure">
+<p><img src="./ts-pdf-switch-noisy.png" alt="ts-pdf-switch-noisy.png" />
+</p>
+</div>
+</section>
+<section id="slide-org2467b47">
+<h3 id="org2467b47">Periodic</h3>
+<ul>
+<li class="fragment appear"><p>
+competitor quotes oscillating: 
+</p>
+<div class="org-src-container">
+
+<pre><code class="python" >CBC = BankQuote(mu = lambda t: 1.9*(1+np.sin(6*t/300))/2, var = lambda t: 0.0001)
+</code></pre>
+</div></li>
+<li class="fragment appear">again market is just that competitor</li>
+
+</ul>
+</section>
+<section id="slide-org318ecb7">
+<h4 id="org318ecb7">Best bandit with hindsight</h4>
+
+<div class="figure">
+<p><img src="./bestind-periodic.png" alt="bestind-periodic.png" />
+</p>
+</div>
+</section>
+<section id="slide-org6bf9699">
+<h4 id="org6bf9699">TS distributions towards the end</h4>
+
+<div class="figure">
+<p><img src="./ts-pdf-periodiccase.png" alt="ts-pdf-periodiccase.png" />
+</p>
+</div>
+</section>
+<section id="slide-org2e33d59">
+<h3 id="org2e33d59">Table of results</h3>
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="org-left" />
+
+<col  class="org-right" />
+
+<col  class="org-right" />
+
+<col  class="org-right" />
+
+<col  class="org-right" />
+
+<col  class="org-right" />
+
+<col  class="org-right" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">Scenario</th>
+<th scope="col" class="org-right">Nb RFQs</th>
+<th scope="col" class="org-right">TS</th>
+<th scope="col" class="org-right">esp-greedy cst</th>
+<th scope="col" class="org-right">eps-greedy var</th>
+<th scope="col" class="org-right">UCB1</th>
+<th scope="col" class="org-right">A/B Test</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">Deterministic</td>
+<td class="org-right">500</td>
+<td class="org-right">2.5</td>
+<td class="org-right">6.5</td>
+<td class="org-right">3</td>
+<td class="org-right">11</td>
+<td class="org-right">7.5</td>
+</tr>
+
+<tr>
+<td class="org-left">Det. with switch</td>
+<td class="org-right">3000</td>
+<td class="org-right">70</td>
+<td class="org-right">70</td>
+<td class="org-right">60</td>
+<td class="org-right">110</td>
+<td class="org-right">160</td>
+</tr>
+
+<tr>
+<td class="org-left">Switch with noise</td>
+<td class="org-right">3000</td>
+<td class="org-right">120</td>
+<td class="org-right">120</td>
+<td class="org-right">110</td>
+<td class="org-right">150</td>
+<td class="org-right">160</td>
+</tr>
+
+<tr>
+<td class="org-left">Periodic</td>
+<td class="org-right">3000</td>
+<td class="org-right">50</td>
+<td class="org-right">60</td>
+<td class="org-right">150</td>
+<td class="org-right">80</td>
+<td class="org-right">40</td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td class="org-left">Average</td>
+<td class="org-right">&#xa0;</td>
+<td class="org-right">60.625</td>
+<td class="org-right">64.125</td>
+<td class="org-right">80.75</td>
+<td class="org-right">87.75</td>
+<td class="org-right">91.875</td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section>
+<section id="slide-org20dc294">
+<h2 id="org20dc294">Concluding remarks</h2>
+<ul>
+<li class="fragment appear">bandit setup does not
+apply <b>only</b> to a RFQ setup.</li>
+<li class="fragment appear">can be extended to streaming 
+<ul>
+<li>apply bandit by time period</li>
+<li>keep other tierings unchanged</li>
+
+</ul></li>
+
+</ul>
+</section>
+</section>
+<section>
+<section id="slide-orgca9b38d">
+<h2 id="orgca9b38d">References</h2>
+<ul>
+<li>Jupyter notebook to be circulated.</li>
+<li><a href="https://blogs.princeton.edu/imabandit/">Blog Sébastien Bubeck at Princeton</a></li>
+<li><a href="https://www.youtube.com/user/sebastienbubeck/videos">His graduate course</a></li>
+<li><a href="https://pypi.org/project/SMPyBandits/">Python library</a></li>
+
+</ul>
+</section>
+</section>
+</div>
+</div>
+<script src="./reveal.js/lib/js/head.min.js"></script>
+<script src="./reveal.js/js/reveal.js"></script>
+<script>
+// Full list of configuration options available here:
+// https://github.com/hakimel/reveal.js#configuration
+Reveal.initialize({
+
+controls: true,
+progress: true,
+history: false,
+center: true,
+slideNumber: 'c',
+rollingLinks: true,
+keyboard: true,
+mouseWheel: false,
+fragmentInURL: false,
+hashOneBasedIndex: false,
+pdfSeparateFragments: true,
+
+overview: true,
+margin: 0.00,
+maxScale: 1.00,
+
+theme: Reveal.getQueryHash().theme, // available themes are in /css/theme
+transition: Reveal.getQueryHash().transition || 'convex', // see README of reveal.js for options
+transitionSpeed: 'default',
+
+// Optional libraries used to extend reveal.js
+dependencies: [
+ { src: './reveal.js/plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }]
+
+});
+</script>
+</body>
+</html>
